@@ -52,6 +52,10 @@ public class Helper {
     public String getFilename() {
         return cfg.getString("itemlist", "/opt/digiverso/other/wellcome/ia/itemlist.txt");
     }
+    
+    public String getDownloadFolder() {
+        return cfg.getString("downloadfolder", "/opt/digiverso/other/wellcome/ia/");
+    }
 
     public List<String> getProperties() {
         List<String> answer = new ArrayList<String>();
@@ -78,4 +82,6 @@ public class Helper {
         Helper h = new Helper("/opt/digiverso/goobi/scripts/internetarchive.properties", "38259");
         System.out.println(h.getProperties());
     }
+
+   
 }
