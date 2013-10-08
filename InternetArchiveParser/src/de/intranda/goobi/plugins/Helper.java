@@ -57,7 +57,7 @@ public class Helper {
         return cfg.getString("downloadfolder", "/opt/digiverso/other/wellcome/ia/");
     }
 
-    public List<String> getProperties() {
+    public List<String> getInternetArchiveIdentifier() {
         List<String> answer = new ArrayList<String>();
         try {
 
@@ -80,7 +80,7 @@ public class Helper {
 
     public static void main(String[] args) throws ConfigurationException, ClassNotFoundException, SQLException {
         Helper h = new Helper("/opt/digiverso/goobi/scripts/internetarchive.properties", "38259");
-        System.out.println(h.getProperties());
+        System.out.println(h.getInternetArchiveIdentifier());
     }
 
    
