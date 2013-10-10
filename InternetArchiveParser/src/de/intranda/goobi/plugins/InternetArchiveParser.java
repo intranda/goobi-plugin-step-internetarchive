@@ -91,20 +91,26 @@ public class InternetArchiveParser {
                 config = cl.getOptionValue("cf");
             }
 
+            logger.debug("loading configuration file " + config);
+
             String processid = cl.getOptionValue("i");
+            logger.debug("started internet archive parser for process " + processid);
             Helper h = new Helper(config, processid);
 
-            if (!writeIdentifier(h)) {
-                System.err.println("Can not write identifier list.");
-                return;
-            }
-
             if (cl.getOptionValue("o").equalsIgnoreCase("download")) {
+                logger.debug("started internet archive parser with download option");
+                if (!writeIdentifier(h)) {
+                    System.err.println("Can not write identifier list.");
+                    return;
+                }
                 if (!download(h)) {
                     System.err.println("Can not download data.");
                     return;
                 }
             } else if (cl.getOptionValue("o").equalsIgnoreCase("import")) {
+                
+                logger.debug("started internet archive parser with import option");
+                
                 if (!cl.hasOption("r") || cl.getOptionValue("r").equals("")) {
                     System.err.println("Ruleset is missing.");
                     HelpFormatter hf = new HelpFormatter();
@@ -115,7 +121,8 @@ public class InternetArchiveParser {
                 String prefsname = cl.getOptionValue("r");
                 try {
                     if (!importData(h, prefsname, processid)) {
-
+                        System.err.println("Can not import data.");
+                        return;
                     }
                 } catch (PreferencesException e) {
                     logger.error(e);
@@ -142,14 +149,19 @@ public class InternetArchiveParser {
     private static boolean importData(Helper h, String prefsname, String processid) throws PreferencesException, ReadException {
         Prefs prefs = new Prefs();
         prefs.loadPrefs(prefsname);
+        logger.debug("Ruleset is " + prefsname);
 
         Fileformat ff = new MetsMods(prefs);
         ff.read("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
 
+        logger.debug("read mets file for " + processid);
+        
         String foldername = h.getDownloadFolder();
 
         List<String> ids = h.getInternetArchiveIdentifier();
 
+        logger.debug("import " + ids.size() + " downloaded parts.");
+        
         File folder = new File(foldername);
         if (!folder.exists() || !folder.isDirectory()) {
             return false;
@@ -175,6 +187,9 @@ public class InternetArchiveParser {
         for (DocStruct issue : periodicalIssues) {
             Metadata md = issue.getAllMetadataByType(internetArchiveNameType).get(0);
             String currentName = md.getValue();
+            
+            logger.debug("import data for issue " + currentName);
+            
             File importFolder = new File(foldername + currentName);
             if (!importFolder.exists() || !importFolder.isDirectory()) {
                 System.err.println("Folder " + importFolder.getAbsolutePath() + " does not exist. abort");
@@ -215,6 +230,7 @@ public class InternetArchiveParser {
 
             // if scandata is compressed, unzip scandata and set filename to xml file
             if (scandataFile.contains(".zip")) {
+                logger.debug("Unzip scandata file");
                 File zipfile = new File(importFolder, scandataFile);
                 unzipFile(zipfile, importFolder);
                 String[] filelist = importFolder.list();
@@ -257,6 +273,7 @@ public class InternetArchiveParser {
             }
 
             if (jp2File.endsWith(".zip")) {
+                logger.debug("Unzip jp2 file");
                 File zipfile = new File(importFolder, jp2File);
                 unzipFile(zipfile, importFolder);
             }
@@ -270,6 +287,7 @@ public class InternetArchiveParser {
 
             List<String> imagenameList = Arrays.asList(imageFolder.list());
             Collections.sort(imagenameList);
+            logger.debug("import " + imagenameList.size() + " files.");
             File scandata = new File(importFolder.getAbsolutePath() + File.separator + scandataFile);
             List<ImageInformation> pages = readPageInformation(scandata, imagenameList);
 
@@ -279,8 +297,38 @@ public class InternetArchiveParser {
 
             createPagination(periodicalVolume, issue, ff.getDigitalDocument(), pages, prefs);
 
+            // find master folder
+            File goobiImagesFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/");
+            String[] subdirectories = goobiImagesFolder.list(DIRECTORY_FILTER);
+            String masterFolderName = "";
+            for (String dir : subdirectories) {
+                if (dir.startsWith("master_") && dir.endsWith("_media")) {
+                    masterFolderName = dir;
+                    break;
+                }
+            }
+            if (masterFolderName.equals("")) {
+                System.err.println("Cannot find master folder for process " + processid);
+                return false;
+            }
             try {
-                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/"));
+                logger.debug("Import images to " + masterFolderName);
+                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/"));
+                //                FileUtils.moveDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/"+ masterFolderName + "/"));
+
+                File scandataImportFile = new File(importFolder, scandataFile);
+                File marcImportFile = new File(importFolder, marcFile);
+                File abbyyImportFile = new File(importFolder, abbyyFile);
+                File jp2ImportFile = new File(importFolder, jp2File);
+
+                File dest = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/");
+                logger.debug("Import downloaded data to " + dest.getAbsolutePath());
+                
+                FileUtils.copyFileToDirectory(scandataImportFile, dest);
+                FileUtils.copyFileToDirectory(marcImportFile, dest);
+                FileUtils.copyFileToDirectory(abbyyImportFile, dest);
+                FileUtils.copyFileToDirectory(jp2ImportFile, dest);
+
             } catch (IOException e) {
                 logger.error(e);
             }
@@ -306,7 +354,7 @@ public class InternetArchiveParser {
             versatz = physical.getAllChildren().size();
         }
         if (pages.get(0).getPhysicalNumber().equals("0")) {
-            versatz = versatz +1;
+            versatz = versatz + 1;
         }
         for (ImageInformation image : pages) {
 
@@ -322,8 +370,12 @@ public class InternetArchiveParser {
                 issue.addReferenceTo(dsPage, "logical_physical");
                 periodicalVolume.addReferenceTo(dsPage, "logical_physical");
 
+                
+                logger.debug("create pagination for "  + image);
+
                 if (image.getType() != null && !image.getType().isEmpty() && !image.getType().equalsIgnoreCase("Normal")) {
                     DocStructType dst = prefs.getDocStrctTypeByName(image.getType());
+                    logger.debug("Try to create sub docstruct for " + image.getType());
                     if (dst != null) {
                         try {
                             DocStruct docStruct = digitalDocument.createDocStruct(dst);
@@ -355,6 +407,7 @@ public class InternetArchiveParser {
         Namespace archive = Namespace.getNamespace("http://archive.org/scribe/xml");
         SAXBuilder builder = new SAXBuilder(false);
         try {
+            logger.debug("load scandata file " + scandata);
             Document document = builder.build(scandata);
             Element book = document.getRootElement();
 
@@ -382,6 +435,7 @@ public class InternetArchiveParser {
                 String imageName = imagenameList.get(i);
                 String physicalNum = page.getAttributeValue("leafNum");
 
+                
                 String logical = "uncounted";
                 String type = "";
                 Element pageType = page.getChild("pageType");
@@ -401,7 +455,7 @@ public class InternetArchiveParser {
                     logical = pageNumber.getText();
                 }
 
-                ImageInformation ii = new ImageInformation(physicalNum, logical, imageName, type);
+                ImageInformation ii = new ImageInformation(physicalNum, logical, imageName, type);                
                 answer.add(ii);
             }
 
@@ -535,6 +589,7 @@ public class InternetArchiveParser {
 
             String outputFilename = helper.getDownloadFolder() + File.separator + "temp.txt";
 
+            logger.debug("Download file list for entry " + line);
             downloadFile(line, outputFilename);
 
             List<String> urls = new ArrayList<String>();
@@ -582,12 +637,16 @@ public class InternetArchiveParser {
                 downloadFolder.mkdir();
             }
 
+            logger.debug("Download scandata file " + scandataPart);
             downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart);
 
+            logger.debug("Download marc file " + marcPart);
             downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart);
 
+            logger.debug("Download abbyy file " + abbyyPart);
             downloadFile("http://archive.org" + urlPart + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart);
 
+            logger.debug("Download jp2 file " + jp2Part);
             downloadFile("http://archive.org" + urlPart + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part);
 
         }
@@ -719,6 +778,7 @@ public class InternetArchiveParser {
         List<String> values = helper.getInternetArchiveIdentifier();
 
         if (values != null && !values.isEmpty()) {
+            logger.debug("Adding " + values.size() + " targets to download list.");
             String filename = helper.getFilename();
             FileWriter fw = null;
             BufferedWriter out = null;
@@ -726,6 +786,7 @@ public class InternetArchiveParser {
                 fw = new FileWriter(filename);
                 out = new BufferedWriter(fw);
                 for (String value : values) {
+                    logger.debug("added value " + value + " to download list.");
                     out.write("http://archive.org/download/" + value);
                     out.newLine();
                 }
