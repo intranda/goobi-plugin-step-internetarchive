@@ -108,9 +108,9 @@ public class InternetArchiveParser {
                     return;
                 }
             } else if (cl.getOptionValue("o").equalsIgnoreCase("import")) {
-                
+
                 logger.debug("started internet archive parser with import option");
-                
+
                 if (!cl.hasOption("r") || cl.getOptionValue("r").equals("")) {
                     System.err.println("Ruleset is missing.");
                     HelpFormatter hf = new HelpFormatter();
@@ -155,13 +155,13 @@ public class InternetArchiveParser {
         ff.read("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
 
         logger.debug("read mets file for " + processid);
-        
+
         String foldername = h.getDownloadFolder();
 
         List<String> ids = h.getInternetArchiveIdentifier();
 
         logger.debug("import " + ids.size() + " downloaded parts.");
-        
+
         File folder = new File(foldername);
         if (!folder.exists() || !folder.isDirectory()) {
             return false;
@@ -187,9 +187,9 @@ public class InternetArchiveParser {
         for (DocStruct issue : periodicalIssues) {
             Metadata md = issue.getAllMetadataByType(internetArchiveNameType).get(0);
             String currentName = md.getValue();
-            
+
             logger.debug("import data for issue " + currentName);
-            
+
             File importFolder = new File(foldername + currentName);
             if (!importFolder.exists() || !importFolder.isDirectory()) {
                 System.err.println("Folder " + importFolder.getAbsolutePath() + " does not exist. abort");
@@ -323,7 +323,7 @@ public class InternetArchiveParser {
 
                 File dest = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/");
                 logger.debug("Import downloaded data to " + dest.getAbsolutePath());
-                
+
                 FileUtils.copyFileToDirectory(scandataImportFile, dest);
                 FileUtils.copyFileToDirectory(marcImportFile, dest);
                 FileUtils.copyFileToDirectory(abbyyImportFile, dest);
@@ -370,8 +370,7 @@ public class InternetArchiveParser {
                 issue.addReferenceTo(dsPage, "logical_physical");
                 periodicalVolume.addReferenceTo(dsPage, "logical_physical");
 
-                
-                logger.debug("create pagination for "  + image);
+                logger.debug("create pagination for " + image);
 
                 if (image.getType() != null && !image.getType().isEmpty() && !image.getType().equalsIgnoreCase("Normal")) {
                     DocStructType dst = prefs.getDocStrctTypeByName(image.getType());
@@ -435,7 +434,6 @@ public class InternetArchiveParser {
                 String imageName = imagenameList.get(i);
                 String physicalNum = page.getAttributeValue("leafNum");
 
-                
                 String logical = "uncounted";
                 String type = "";
                 Element pageType = page.getChild("pageType");
@@ -455,7 +453,7 @@ public class InternetArchiveParser {
                     logical = pageNumber.getText();
                 }
 
-                ImageInformation ii = new ImageInformation(physicalNum, logical, imageName, type);                
+                ImageInformation ii = new ImageInformation(physicalNum, logical, imageName, type);
                 answer.add(ii);
             }
 
@@ -587,14 +585,14 @@ public class InternetArchiveParser {
         for (String line : lines) {
             String filename = line.replace("http://archive.org/download/", "");
 
-            String outputFilename = helper.getDownloadFolder() + File.separator + "temp.txt";
+            String outputFilename = helper.getDownloadFolder() + File.separator + filename + ".txt";
 
             logger.debug("Download file list for entry " + line);
             downloadFile(line, outputFilename);
 
             List<String> urls = new ArrayList<String>();
             try {
-                in = new BufferedReader(new FileReader(helper.getDownloadFolder() + File.separator + "temp.txt"));
+                in = new BufferedReader(new FileReader(helper.getDownloadFolder() + File.separator + filename + ".txt"));
                 String bla = null;
                 while ((bla = in.readLine()) != null) {
                     urls.add(bla);
@@ -636,10 +634,13 @@ public class InternetArchiveParser {
             if (!downloadFolder.exists()) {
                 downloadFolder.mkdir();
             }
-
             logger.debug("Download scandata file " + scandataPart);
-            downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart);
+            if (scandataPart.contains(filename)) {
+                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart);
+            } else {
+                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename + "_" + scandataPart);
 
+            }
             logger.debug("Download marc file " + marcPart);
             downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart);
 
