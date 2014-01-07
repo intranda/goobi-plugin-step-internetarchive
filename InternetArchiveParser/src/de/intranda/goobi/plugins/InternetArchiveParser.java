@@ -2,6 +2,7 @@ package de.intranda.goobi.plugins;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -33,13 +34,23 @@ import org.apache.commons.compress.archivers.ArchiveException;
 import org.apache.commons.compress.archivers.ArchiveStreamFactory;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpException;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.params.ConnRoutePNames;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import org.jdom.Document;
 import org.jdom.Element;
@@ -638,7 +649,8 @@ public class InternetArchiveParser {
             if (scandataPart.contains(filename)) {
                 downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart);
             } else {
-                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename + "_" + scandataPart);
+                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename + "_"
+                        + scandataPart);
 
             }
             logger.debug("Download marc file " + marcPart);
@@ -654,16 +666,24 @@ public class InternetArchiveParser {
         return true;
     }
 
+    @SuppressWarnings("deprecation")
     private static void downloadFile(String line, String outputFilename) {
-        HttpClient client = new HttpClient();
-        GetMethod method = new GetMethod(line);
+
+        HttpHost proxy = new HttpHost("http://10.215.195.23", 8080);
+        boolean useProxy = true;
+        DefaultHttpClient httpclient = null;
+
+        HttpGet method = new HttpGet(line);
         InputStream istr = null;
         OutputStream ostr = null;
         try {
-            int statusCode = client.executeMethod(method);
-            if (statusCode != HttpStatus.SC_OK) {
+            httpclient = new DefaultHttpClient();
+            if (useProxy) {
+                httpclient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
             }
-            istr = method.getResponseBodyAsStream();
+            byte[] response = httpclient.execute(method, responseHandler);
+
+            istr = new ByteArrayInputStream(response);
             ostr = new FileOutputStream(outputFilename);
 
             // Transfer bytes from in to out
@@ -672,12 +692,13 @@ public class InternetArchiveParser {
             while ((len = istr.read(buf)) > 0) {
                 ostr.write(buf, 0, len);
             }
-        } catch (HttpException e) {
+        } catch (Exception e) {
             logger.error("Unable to connect to image url " + line);
-        } catch (IOException e) {
-            logger.error(e);
         } finally {
             method.releaseConnection();
+            if (httpclient != null) {
+                httpclient.close();
+            }
             if (istr != null) {
                 try {
                     istr.close();
@@ -694,6 +715,59 @@ public class InternetArchiveParser {
             }
         }
     }
+
+    static ResponseHandler<byte[]> responseHandler = new ResponseHandler<byte[]>() {
+        @Override
+        public byte[] handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                return EntityUtils.toByteArray(entity);
+            } else {
+                return null;
+            }
+        }
+    };
+
+    //    private static void downloadFile(String line, String outputFilename) {
+    //        HttpClient client = new HttpClient();
+    //        GetMethod method = new GetMethod(line);
+    //        InputStream istr = null;
+    //        OutputStream ostr = null;
+    //        try {
+    //            int statusCode = client.executeMethod(method);
+    //            if (statusCode != HttpStatus.SC_OK) {
+    //            }
+    //            istr = method.getResponseBodyAsStream();
+    //            ostr = new FileOutputStream(outputFilename);
+    //
+    //            // Transfer bytes from in to out
+    //            byte[] buf = new byte[1024];
+    //            int len;
+    //            while ((len = istr.read(buf)) > 0) {
+    //                ostr.write(buf, 0, len);
+    //            }
+    //        } catch (HttpException e) {
+    //            logger.error("Unable to connect to image url " + line);
+    //        } catch (IOException e) {
+    //            logger.error(e);
+    //        } finally {
+    //            method.releaseConnection();
+    //            if (istr != null) {
+    //                try {
+    //                    istr.close();
+    //                } catch (IOException e) {
+    //                    logger.error(e);
+    //                }
+    //            }
+    //            if (ostr != null) {
+    //                try {
+    //                    ostr.close();
+    //                } catch (IOException e) {
+    //                    logger.error(e);
+    //                }
+    //            }
+    //        }
+    //    }
 
     @SuppressWarnings("unused")
     private static boolean downloadWithWget(Helper helper) {
