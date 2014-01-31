@@ -38,15 +38,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -76,7 +72,11 @@ import ugh.fileformats.mets.MetsMods;
 public class InternetArchiveParser {
     private static final Logger logger = Logger.getLogger(InternetArchiveParser.class);
 
+    // TODO get this from configuration
+    private static boolean useProxy = false;
+
     public static void main(String[] args) {
+
         Options options = generateOptions();
         CommandLineParser parser = new PosixParser();
         try {
@@ -295,9 +295,12 @@ public class InternetArchiveParser {
                 System.err.println("Image folder does not exist. Expected folder is " + imageFolder.getAbsolutePath());
                 return false;
             }
+            // TODO delete first images
 
             List<String> imagenameList = Arrays.asList(imageFolder.list());
             Collections.sort(imagenameList);
+
+            imagenameList = imagenameList.subList(3, imagenameList.size());
             logger.debug("import " + imagenameList.size() + " files.");
             File scandata = new File(importFolder.getAbsolutePath() + File.separator + scandataFile);
             List<ImageInformation> pages = readPageInformation(scandata, imagenameList);
@@ -426,7 +429,7 @@ public class InternetArchiveParser {
             if (pageData == null) {
                 pageData = book.getChild("pageData", archive);
             }
-
+            // TODO check if scandata must ignore first 3 pages
             List<Element> pageList = pageData.getChildren("page");
             if (pageList == null || pageList.isEmpty()) {
                 pageList = pageData.getChildren("page", archive);
@@ -668,49 +671,53 @@ public class InternetArchiveParser {
 
     @SuppressWarnings("deprecation")
     private static void downloadFile(String line, String outputFilename) {
+        if (!useProxy) {
+            downloadFileWithoutProxy(line, outputFilename);
+        } else {
 
-        HttpHost proxy = new HttpHost("http://10.215.195.23", 8080);
-        boolean useProxy = true;
-        DefaultHttpClient httpclient = null;
+            HttpHost proxy = new HttpHost("http://10.215.195.23", 8080);
+            boolean useProxy = true;
+            DefaultHttpClient httpclient = null;
 
-        HttpGet method = new HttpGet(line);
-        InputStream istr = null;
-        OutputStream ostr = null;
-        try {
-            httpclient = new DefaultHttpClient();
-            if (useProxy) {
-                httpclient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
-            }
-            byte[] response = httpclient.execute(method, responseHandler);
-
-            istr = new ByteArrayInputStream(response);
-            ostr = new FileOutputStream(outputFilename);
-
-            // Transfer bytes from in to out
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = istr.read(buf)) > 0) {
-                ostr.write(buf, 0, len);
-            }
-        } catch (Exception e) {
-            logger.error("Unable to connect to image url " + line);
-        } finally {
-            method.releaseConnection();
-            if (httpclient != null) {
-                httpclient.close();
-            }
-            if (istr != null) {
-                try {
-                    istr.close();
-                } catch (IOException e) {
-                    logger.error(e);
+            HttpGet method = new HttpGet(line);
+            InputStream istr = null;
+            OutputStream ostr = null;
+            try {
+                httpclient = new DefaultHttpClient();
+                if (useProxy) {
+                    httpclient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
                 }
-            }
-            if (ostr != null) {
-                try {
-                    ostr.close();
-                } catch (IOException e) {
-                    logger.error(e);
+                byte[] response = httpclient.execute(method, responseHandler);
+
+                istr = new ByteArrayInputStream(response);
+                ostr = new FileOutputStream(outputFilename);
+
+                // Transfer bytes from in to out
+                byte[] buf = new byte[1024];
+                int len;
+                while ((len = istr.read(buf)) > 0) {
+                    ostr.write(buf, 0, len);
+                }
+            } catch (Exception e) {
+                logger.error("Unable to connect to image url " + line);
+            } finally {
+                method.releaseConnection();
+                if (httpclient != null) {
+                    httpclient.close();
+                }
+                if (istr != null) {
+                    try {
+                        istr.close();
+                    } catch (IOException e) {
+                        logger.error(e);
+                    }
+                }
+                if (ostr != null) {
+                    try {
+                        ostr.close();
+                    } catch (IOException e) {
+                        logger.error(e);
+                    }
                 }
             }
         }
@@ -728,46 +735,43 @@ public class InternetArchiveParser {
         }
     };
 
-    //    private static void downloadFile(String line, String outputFilename) {
-    //        HttpClient client = new HttpClient();
-    //        GetMethod method = new GetMethod(line);
-    //        InputStream istr = null;
-    //        OutputStream ostr = null;
-    //        try {
-    //            int statusCode = client.executeMethod(method);
-    //            if (statusCode != HttpStatus.SC_OK) {
-    //            }
-    //            istr = method.getResponseBodyAsStream();
-    //            ostr = new FileOutputStream(outputFilename);
-    //
-    //            // Transfer bytes from in to out
-    //            byte[] buf = new byte[1024];
-    //            int len;
-    //            while ((len = istr.read(buf)) > 0) {
-    //                ostr.write(buf, 0, len);
-    //            }
-    //        } catch (HttpException e) {
-    //            logger.error("Unable to connect to image url " + line);
-    //        } catch (IOException e) {
-    //            logger.error(e);
-    //        } finally {
-    //            method.releaseConnection();
-    //            if (istr != null) {
-    //                try {
-    //                    istr.close();
-    //                } catch (IOException e) {
-    //                    logger.error(e);
-    //                }
-    //            }
-    //            if (ostr != null) {
-    //                try {
-    //                    ostr.close();
-    //                } catch (IOException e) {
-    //                    logger.error(e);
-    //                }
-    //            }
-    //        }
-    //    }
+    private static void downloadFileWithoutProxy(String line, String outputFilename) {
+        HttpClient client = new DefaultHttpClient();
+        HttpGet method = new HttpGet(line);
+        InputStream istr = null;
+        OutputStream ostr = null;
+        try {
+            byte[] response = client.execute(method, responseHandler);
+            istr = new ByteArrayInputStream(response);
+            ostr = new FileOutputStream(outputFilename);
+
+            // Transfer bytes from in to out
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = istr.read(buf)) > 0) {
+                ostr.write(buf, 0, len);
+            }
+
+        } catch (IOException e) {
+            logger.error(e);
+        } finally {
+            method.releaseConnection();
+            if (istr != null) {
+                try {
+                    istr.close();
+                } catch (IOException e) {
+                    logger.error(e);
+                }
+            }
+            if (ostr != null) {
+                try {
+                    ostr.close();
+                } catch (IOException e) {
+                    logger.error(e);
+                }
+            }
+        }
+    }
 
     @SuppressWarnings("unused")
     private static boolean downloadWithWget(Helper helper) {

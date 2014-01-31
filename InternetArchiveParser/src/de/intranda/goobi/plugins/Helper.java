@@ -50,7 +50,7 @@ public class Helper {
     }
 
     public String getFilename() {
-        return cfg.getString("itemlist", "/opt/digiverso/other/wellcome/ia/itemlist.txt");
+        return cfg.getString("itemlist", "/opt/digiverso/other/wellcome/ia/") + PROCESSID + ".txt";
     }
     
     public String getDownloadFolder() {
