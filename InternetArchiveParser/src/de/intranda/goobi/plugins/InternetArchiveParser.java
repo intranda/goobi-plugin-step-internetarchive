@@ -73,7 +73,6 @@ import ugh.fileformats.mets.MetsMods;
 public class InternetArchiveParser {
     private static final Logger logger = Logger.getLogger(InternetArchiveParser.class);
 
-    // TODO get this from configuration
     private static boolean useProxy = false;
 
     public static void main(String[] args) {
@@ -328,7 +327,7 @@ public class InternetArchiveParser {
                 logger.debug("Import images to " + masterFolderName);
                 File masterFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/");
                 for (int i = 0; i < pages.size(); i++) {
-                    ImageInformation ii = pages.get(0);
+                    ImageInformation ii = pages.get(i);
                     if (ii.isAddToAccessFormats()) {
                         File currentImage = new File(imageFolder, ii.getImageName());
                         FileUtils.copyFileToDirectory(currentImage, masterFolder);
@@ -378,46 +377,46 @@ public class InternetArchiveParser {
             versatz = versatz + 1;
         }
         for (ImageInformation image : pages) {
+            if (image.isAddToAccessFormats()) {
+                try {
+                    DocStruct dsPage = digitalDocument.createDocStruct(dsTypePage);
+                    physical.addChild(dsPage);
+                    Metadata metaPhysPageNumber = new Metadata(prefs.getMetadataTypeByName("physPageNumber"));
+                    dsPage.addMetadata(metaPhysPageNumber);
+                    metaPhysPageNumber.setValue(String.valueOf(Integer.parseInt(image.getPhysicalNumber()) + versatz));
+                    Metadata metaLogPageNumber = new Metadata(prefs.getMetadataTypeByName("logicalPageNumber"));
+                    metaLogPageNumber.setValue(image.getLogicalNumber());
+                    dsPage.addMetadata(metaLogPageNumber);
+                    issue.addReferenceTo(dsPage, "logical_physical");
+                    periodicalVolume.addReferenceTo(dsPage, "logical_physical");
 
-            try {
-                DocStruct dsPage = digitalDocument.createDocStruct(dsTypePage);
-                physical.addChild(dsPage);
-                Metadata metaPhysPageNumber = new Metadata(prefs.getMetadataTypeByName("physPageNumber"));
-                dsPage.addMetadata(metaPhysPageNumber);
-                metaPhysPageNumber.setValue(String.valueOf(Integer.parseInt(image.getPhysicalNumber()) + versatz));
-                Metadata metaLogPageNumber = new Metadata(prefs.getMetadataTypeByName("logicalPageNumber"));
-                metaLogPageNumber.setValue(image.getLogicalNumber());
-                dsPage.addMetadata(metaLogPageNumber);
-                issue.addReferenceTo(dsPage, "logical_physical");
-                periodicalVolume.addReferenceTo(dsPage, "logical_physical");
+                    logger.debug("create pagination for " + image);
 
-                logger.debug("create pagination for " + image);
+                    if (image.getType() != null && !image.getType().isEmpty() && !image.getType().equalsIgnoreCase("Normal")) {
+                        DocStructType dst = prefs.getDocStrctTypeByName(image.getType());
+                        logger.debug("Try to create sub docstruct for " + image.getType());
+                        if (dst != null) {
+                            try {
+                                DocStruct docStruct = digitalDocument.createDocStruct(dst);
+                                issue.addChild(docStruct);
+                                docStruct.addReferenceTo(dsPage, "logical_physical");
 
-                if (image.getType() != null && !image.getType().isEmpty() && !image.getType().equalsIgnoreCase("Normal")) {
-                    DocStructType dst = prefs.getDocStrctTypeByName(image.getType());
-                    logger.debug("Try to create sub docstruct for " + image.getType());
-                    if (dst != null) {
-                        try {
-                            DocStruct docStruct = digitalDocument.createDocStruct(dst);
-                            issue.addChild(docStruct);
-                            docStruct.addReferenceTo(dsPage, "logical_physical");
-
-                        } catch (TypeNotAllowedForParentException e) {
-                            logger.error(e);
-                        } catch (TypeNotAllowedAsChildException e) {
-                            logger.error(e);
+                            } catch (TypeNotAllowedForParentException e) {
+                                logger.error(e);
+                            } catch (TypeNotAllowedAsChildException e) {
+                                logger.error(e);
+                            }
                         }
                     }
+
+                } catch (TypeNotAllowedAsChildException e) {
+                    logger.error(e);
+                } catch (TypeNotAllowedForParentException e) {
+                    logger.error(e);
+                } catch (MetadataTypeNotAllowedException e) {
+                    logger.error(e);
                 }
-
-            } catch (TypeNotAllowedAsChildException e) {
-                logger.error(e);
-            } catch (TypeNotAllowedForParentException e) {
-                logger.error(e);
-            } catch (MetadataTypeNotAllowedException e) {
-                logger.error(e);
             }
-
         }
     }
 
