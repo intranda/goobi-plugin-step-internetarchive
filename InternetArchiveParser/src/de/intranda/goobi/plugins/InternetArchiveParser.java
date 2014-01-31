@@ -69,6 +69,7 @@ import ugh.exceptions.TypeNotAllowedForParentException;
 import ugh.exceptions.WriteException;
 import ugh.fileformats.mets.MetsMods;
 
+@SuppressWarnings("deprecation")
 public class InternetArchiveParser {
     private static final Logger logger = Logger.getLogger(InternetArchiveParser.class);
 
@@ -107,7 +108,7 @@ public class InternetArchiveParser {
             String processid = cl.getOptionValue("i");
             logger.debug("started internet archive parser for process " + processid);
             Helper h = new Helper(config, processid);
-
+            useProxy = h.getUseProxy();
             if (cl.getOptionValue("o").equalsIgnoreCase("download")) {
                 logger.debug("started internet archive parser with download option");
                 if (!writeIdentifier(h)) {
@@ -295,12 +296,10 @@ public class InternetArchiveParser {
                 System.err.println("Image folder does not exist. Expected folder is " + imageFolder.getAbsolutePath());
                 return false;
             }
-            // TODO delete first images
 
             List<String> imagenameList = Arrays.asList(imageFolder.list());
             Collections.sort(imagenameList);
 
-            imagenameList = imagenameList.subList(3, imagenameList.size());
             logger.debug("import " + imagenameList.size() + " files.");
             File scandata = new File(importFolder.getAbsolutePath() + File.separator + scandataFile);
             List<ImageInformation> pages = readPageInformation(scandata, imagenameList);
@@ -327,8 +326,16 @@ public class InternetArchiveParser {
             }
             try {
                 logger.debug("Import images to " + masterFolderName);
-                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/"));
-                //                FileUtils.moveDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/"+ masterFolderName + "/"));
+                File masterFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/");
+                for (int i = 0; i < pages.size(); i++) {
+                    ImageInformation ii = pages.get(0);
+                    if (ii.isAddToAccessFormats()) {
+                        File currentImage = new File(imageFolder, ii.getImageName());
+                        FileUtils.copyFileToDirectory(currentImage, masterFolder);
+                    }
+                }
+
+                //                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/"));
 
                 File scandataImportFile = new File(importFolder, scandataFile);
                 File marcImportFile = new File(importFolder, marcFile);
@@ -429,7 +436,6 @@ public class InternetArchiveParser {
             if (pageData == null) {
                 pageData = book.getChild("pageData", archive);
             }
-            // TODO check if scandata must ignore first 3 pages
             List<Element> pageList = pageData.getChildren("page");
             if (pageList == null || pageList.isEmpty()) {
                 pageList = pageData.getChildren("page", archive);
@@ -447,6 +453,17 @@ public class InternetArchiveParser {
                 Element page = pageList.get(i);
                 String imageName = imagenameList.get(i);
                 String physicalNum = page.getAttributeValue("leafNum");
+
+                Element access = page.getChild("addToAccessFormats");
+                boolean addToAccessFormats;
+                if (access == null) {
+                    access = page.getChild("addToAccessFormats", archive);
+                }
+                if (access != null && access.getText() != null && access.getText().equals("false")) {
+                    addToAccessFormats = false;
+                } else {
+                    addToAccessFormats = true;
+                }
 
                 String logical = "uncounted";
                 String type = "";
@@ -467,7 +484,7 @@ public class InternetArchiveParser {
                     logical = pageNumber.getText();
                 }
 
-                ImageInformation ii = new ImageInformation(physicalNum, logical, imageName, type);
+                ImageInformation ii = new ImageInformation(physicalNum, logical, imageName, type, addToAccessFormats);
                 answer.add(ii);
             }
 
@@ -602,7 +619,7 @@ public class InternetArchiveParser {
             String outputFilename = helper.getDownloadFolder() + File.separator + filename + ".txt";
 
             logger.debug("Download file list for entry " + line);
-            downloadFile(line, outputFilename);
+            downloadFile(line, outputFilename, helper);
 
             List<String> urls = new ArrayList<String>();
             try {
@@ -650,32 +667,32 @@ public class InternetArchiveParser {
             }
             logger.debug("Download scandata file " + scandataPart);
             if (scandataPart.contains(filename)) {
-                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart);
+                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart,
+                        helper);
             } else {
                 downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename + "_"
-                        + scandataPart);
+                        + scandataPart, helper);
 
             }
             logger.debug("Download marc file " + marcPart);
-            downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart);
+            downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart, helper);
 
             logger.debug("Download abbyy file " + abbyyPart);
-            downloadFile("http://archive.org" + urlPart + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart);
+            downloadFile("http://archive.org" + urlPart + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart, helper);
 
             logger.debug("Download jp2 file " + jp2Part);
-            downloadFile("http://archive.org" + urlPart + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part);
+            downloadFile("http://archive.org" + urlPart + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part, helper);
 
         }
         return true;
     }
 
-    @SuppressWarnings("deprecation")
-    private static void downloadFile(String line, String outputFilename) {
+    private static void downloadFile(String line, String outputFilename, Helper h) {
         if (!useProxy) {
             downloadFileWithoutProxy(line, outputFilename);
         } else {
 
-            HttpHost proxy = new HttpHost("http://10.215.195.23", 8080);
+            HttpHost proxy = new HttpHost(h.getProxyUrl(), h.getProxyPort());
             boolean useProxy = true;
             DefaultHttpClient httpclient = null;
 

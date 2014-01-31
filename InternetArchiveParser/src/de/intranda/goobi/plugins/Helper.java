@@ -52,7 +52,7 @@ public class Helper {
     public String getFilename() {
         return cfg.getString("itemlist", "/opt/digiverso/other/wellcome/ia/") + PROCESSID + ".txt";
     }
-    
+
     public String getDownloadFolder() {
         return cfg.getString("downloadfolder", "/opt/digiverso/other/wellcome/ia/");
     }
@@ -83,5 +83,15 @@ public class Helper {
         System.out.println(h.getInternetArchiveIdentifier());
     }
 
-   
+    public boolean getUseProxy() {
+        return cfg.getBoolean("useProxy", false);
+    }
+    
+    public String getProxyUrl() {
+        return cfg.getString("proxyurl", "http://10.215.195.23");
+    }
+    
+    public int getProxyPort() {
+        return cfg.getInt("proxyport", 8080);
+    }
 }

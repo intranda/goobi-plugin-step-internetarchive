@@ -6,12 +6,14 @@ public class ImageInformation {
     private String logicalNumber = "";
     private String imageName = "";
     private String type = "";
+    private boolean addToAccessFormats; 
 
-    public ImageInformation(String physicalNumber, String logicalNumber, String imageName, String type) {
+    public ImageInformation(String physicalNumber, String logicalNumber, String imageName, String type, boolean addToAccessFormats) {
         this.physicalNumber = physicalNumber;
         this.logicalNumber = logicalNumber;
         this.imageName = imageName;
         this.type = type;
+        this.addToAccessFormats = addToAccessFormats;
     }
 
     public String getPhysicalNumber() {
@@ -45,11 +47,15 @@ public class ImageInformation {
     public void setType(String type) {
         this.type = type;
     }
+    
+    public boolean isAddToAccessFormats() {
+        return addToAccessFormats;
+    }
 
     @Override
     public String toString() {
         return "ImageInformation [physicalNumber=" + physicalNumber + ", logicalNumber=" + logicalNumber + ", imageName=" + imageName + ", type="
-                + type + "]";
+                + type + ", sddToAccessFormats=" + addToAccessFormats + "]";
     }
 
 }
