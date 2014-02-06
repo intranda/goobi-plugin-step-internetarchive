@@ -389,7 +389,7 @@ public class InternetArchiveParser {
                     dsPage.addMetadata(metaLogPageNumber);
                     issue.addReferenceTo(dsPage, "logical_physical");
                     periodicalVolume.addReferenceTo(dsPage, "logical_physical");
-
+                    dsPage.setImageName(image.getImageName());
                     logger.debug("create pagination for " + image);
 
                     if (image.getType() != null && !image.getType().isEmpty() && !image.getType().equalsIgnoreCase("Normal")) {
