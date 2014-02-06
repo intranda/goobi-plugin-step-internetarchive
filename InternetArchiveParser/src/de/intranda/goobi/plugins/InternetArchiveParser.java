@@ -715,7 +715,7 @@ public class InternetArchiveParser {
                     ostr.write(buf, 0, len);
                 }
             } catch (Exception e) {
-                logger.error("Unable to connect to image url " + line);
+                logger.error("Unable to connect to url " + line, e);
             } finally {
                 method.releaseConnection();
                 if (httpclient != null) {

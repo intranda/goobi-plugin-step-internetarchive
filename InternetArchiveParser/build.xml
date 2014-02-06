@@ -152,7 +152,7 @@
 				<attribute name="Rsrc-Class-Path" value="./ ${libs.project}" />
 				<attribute name="Class-Path" value="." />
 				<attribute name="Main-Class" value="${main.rsrc}" />
-				<attribute name="Rsrc-Main-Class" value="de.intranda.ftp.controller.ContentMigrator" />
+				<attribute name="Rsrc-Main-Class" value="${main.class}" />
 			</manifest>
 		</jar>
 	</target>
