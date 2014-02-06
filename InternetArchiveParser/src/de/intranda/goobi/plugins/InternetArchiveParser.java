@@ -194,7 +194,7 @@ public class InternetArchiveParser {
         List<DocStruct> periodicalIssues = periodicalVolume.getAllChildren();
 
         MetadataType internetArchiveNameType = prefs.getMetadataTypeByName("InternetArchiveName");
-
+int ordernumber = 1;
         for (DocStruct issue : periodicalIssues) {
             Metadata md = issue.getAllMetadataByType(internetArchiveNameType).get(0);
             String currentName = md.getValue();
@@ -307,7 +307,7 @@ public class InternetArchiveParser {
                 return false;
             }
 
-            createPagination(periodicalVolume, issue, ff.getDigitalDocument(), pages, prefs);
+            ordernumber= createPagination(periodicalVolume, issue, ff.getDigitalDocument(), pages, prefs, ordernumber);
 
             // find master folder
             File goobiImagesFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/");
@@ -364,18 +364,18 @@ public class InternetArchiveParser {
         return true;
     }
 
-    private static void createPagination(DocStruct periodicalVolume, DocStruct issue, DigitalDocument digitalDocument, List<ImageInformation> pages,
-            Prefs prefs) {
+    private static int createPagination(DocStruct periodicalVolume, DocStruct issue, DigitalDocument digitalDocument, List<ImageInformation> pages,
+            Prefs prefs, int ordernumber) {
         DocStructType dsTypePage = prefs.getDocStrctTypeByName("page");
         DocStruct physical = digitalDocument.getPhysicalDocStruct();
-        int versatz = 0;
-
-        if (physical.getAllChildren() != null) {
-            versatz = physical.getAllChildren().size();
-        }
-        if (pages.get(0).getPhysicalNumber().equals("0")) {
-            versatz = versatz + 1;
-        }
+//        int versatz = 0;
+//
+//        if (physical.getAllChildren() != null) {
+//            versatz = physical.getAllChildren().size();
+//        }
+//        if (pages.get(0).getPhysicalNumber().equals("0")) {
+//            versatz = versatz + 1;
+//        }
         for (ImageInformation image : pages) {
             if (image.isAddToAccessFormats()) {
                 try {
@@ -383,7 +383,7 @@ public class InternetArchiveParser {
                     physical.addChild(dsPage);
                     Metadata metaPhysPageNumber = new Metadata(prefs.getMetadataTypeByName("physPageNumber"));
                     dsPage.addMetadata(metaPhysPageNumber);
-                    metaPhysPageNumber.setValue(String.valueOf(Integer.parseInt(image.getPhysicalNumber()) + versatz));
+                    metaPhysPageNumber.setValue(String.valueOf(ordernumber++));
                     Metadata metaLogPageNumber = new Metadata(prefs.getMetadataTypeByName("logicalPageNumber"));
                     metaLogPageNumber.setValue(image.getLogicalNumber());
                     dsPage.addMetadata(metaLogPageNumber);
@@ -418,6 +418,7 @@ public class InternetArchiveParser {
                 }
             }
         }
+        return ordernumber;
     }
 
     @SuppressWarnings("unchecked")
