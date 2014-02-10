@@ -194,7 +194,7 @@ public class InternetArchiveParser {
         List<DocStruct> periodicalIssues = periodicalVolume.getAllChildren();
 
         MetadataType internetArchiveNameType = prefs.getMetadataTypeByName("InternetArchiveName");
-int ordernumber = 1;
+        int ordernumber = 1;
         for (DocStruct issue : periodicalIssues) {
             Metadata md = issue.getAllMetadataByType(internetArchiveNameType).get(0);
             String currentName = md.getValue();
@@ -307,7 +307,7 @@ int ordernumber = 1;
                 return false;
             }
 
-            ordernumber= createPagination(periodicalVolume, issue, ff.getDigitalDocument(), pages, prefs, ordernumber);
+            ordernumber = createPagination(periodicalVolume, issue, ff.getDigitalDocument(), pages, prefs, ordernumber);
 
             // find master folder
             File goobiImagesFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/");
@@ -361,6 +361,32 @@ int ordernumber = 1;
             logger.error(e);
         }
 
+        // delete import data
+
+        System.gc();
+
+        File processFile = new File(folder, processid + ".txt");
+        logger.debug("try to delete " + processFile.getAbsolutePath());
+        if (processFile.exists()) {
+            FileUtils.deleteQuietly(processFile);
+        }
+
+        for (String currentName : ids) {
+            File issueFile = new File(folder, currentName + ".txt");
+            logger.debug("try to delete " + issueFile.getAbsolutePath());
+            if (issueFile.exists()) {
+                FileUtils.deleteQuietly(issueFile);
+            }
+            File importFolder = new File(folder, currentName);
+            logger.debug("try to delete " + importFolder.getAbsolutePath());
+            if (importFolder.exists()) {
+                try {
+                    FileUtils.deleteDirectory(importFolder);
+                } catch (IOException e) {
+                    logger.error(e);
+                }
+            }
+        }
         return true;
     }
 
@@ -368,14 +394,7 @@ int ordernumber = 1;
             Prefs prefs, int ordernumber) {
         DocStructType dsTypePage = prefs.getDocStrctTypeByName("page");
         DocStruct physical = digitalDocument.getPhysicalDocStruct();
-//        int versatz = 0;
-//
-//        if (physical.getAllChildren() != null) {
-//            versatz = physical.getAllChildren().size();
-//        }
-//        if (pages.get(0).getPhysicalNumber().equals("0")) {
-//            versatz = versatz + 1;
-//        }
+
         for (ImageInformation image : pages) {
             if (image.isAddToAccessFormats()) {
                 try {
@@ -802,15 +821,8 @@ int ordernumber = 1;
         ProcessBuilder pb = new ProcessBuilder("wget", "-r", "-H", "-nc", "-np", "-nH", "--cut-dirs=2", "-e", "robots=off", "-l1", "-i", itemlist);
         pb.directory(new File(downloadFolder));
 
-        //        String command = "/usr/bin/wget -r -H -nc -np -nH --cut-dirs=2 -e  --robots=off -l1 -P /opt/digiverso/other/wellcome/ia -i " + itemlist ;        
         try {
-            //            logger.debug("execute Shellcommand callShell2: " + command);
             boolean errorsExist = false;
-            //            if (command == null || command.length() == 0) {
-            //                return false;
-            //            }
-
-            //                        Process process = Runtime.getRuntime().exec(command);
 
             Process process = pb.start();
 
