@@ -109,8 +109,8 @@ public class InternetArchiveParser {
             Helper h = new Helper(config, processid);
             useProxy = h.getUseProxy();
             if (cl.getOptionValue("o").equalsIgnoreCase("download")) {
-                logger.debug("started internet archive parser with download option");
-                if (!writeIdentifier(h)) {
+                logger.debug("started internet archive parser with download option for journals");
+                if (!writeIdentifier(h, null)) {
                     System.err.println("Can not write identifier list.");
                     return;
                 }
@@ -118,7 +118,27 @@ public class InternetArchiveParser {
                     System.err.println("Can not download data.");
                     return;
                 }
-            } else if (cl.getOptionValue("o").equalsIgnoreCase("import")) {
+            } else if (cl.getOptionValue("o").equalsIgnoreCase("downloadbook")) {
+                logger.debug("started internet archive parser with download option for monographs");
+                if (!cl.hasOption("n") || cl.getOptionValue("n").equals("")) {
+                    System.err.println("Name is missing.");
+                    HelpFormatter hf = new HelpFormatter();
+                    hf.setWidth(79);
+                    hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
+                    return;
+                }
+                String name = cl.getOptionValue("n");
+                if (!writeIdentifier(h, name)) {
+                    System.err.println("Can not write identifier list.");
+                    return;
+                }
+                if (!download(h)) {
+                    System.err.println("Can not download data.");
+                    return;
+                }
+            }
+
+            else if (cl.getOptionValue("o").equalsIgnoreCase("import")) {
 
                 logger.debug("started internet archive parser with import option");
 
@@ -129,9 +149,14 @@ public class InternetArchiveParser {
                     hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
                     return;
                 }
+                String name = null;
+                if (cl.hasOption("n") && !cl.getOptionValue("n").equals("")) {
+                    name = cl.getOptionValue("n");
+
+                }
                 String prefsname = cl.getOptionValue("r");
                 try {
-                    if (!importData(h, prefsname, processid)) {
+                    if (!importData(h, prefsname, processid, name)) {
                         System.err.println("Can not import data.");
                         return;
                     }
@@ -157,7 +182,8 @@ public class InternetArchiveParser {
 
     }
 
-    private static boolean importData(Helper h, String prefsname, String processid) throws PreferencesException, ReadException {
+    private static boolean importData(Helper h, String prefsname, String processid, String internetArchiveID) throws PreferencesException,
+            ReadException {
         Prefs prefs = new Prefs();
         prefs.loadPrefs(prefsname);
         logger.debug("Ruleset is " + prefsname);
@@ -167,6 +193,191 @@ public class InternetArchiveParser {
 
         logger.debug("read mets file for " + processid);
 
+        DocStruct root = ff.getDigitalDocument().getLogicalDocStruct();
+        if (root.getType().getName().equalsIgnoreCase("Periodical")) {
+            return importJournal(h, root, ff, prefs, processid);
+        } else {
+            return importMonograph(h, root, ff, prefs, processid, internetArchiveID);
+        }
+
+    }
+
+    private static boolean importMonograph(Helper h, DocStruct monograph, Fileformat ff, Prefs prefs, String processid, String internetArchiveID)
+            throws PreferencesException {
+       
+        
+        String foldername = h.getDownloadFolder();
+
+        logger.debug("import " + internetArchiveID);
+
+        File folder = new File(foldername);
+        if (!folder.exists() || !folder.isDirectory()) {
+            return false;
+        }
+
+        File importFolder = new File(folder, internetArchiveID);
+        if (!importFolder.exists() || !importFolder.isDirectory()) {
+            System.err.println("Folder " + importFolder.getAbsolutePath() + " does not exist. abort");
+            return false;
+        }
+
+        String scandataFile = "";
+        String marcFile = "";
+        String abbyyFile = "";
+        String jp2File = "";
+        String[] filesInFolder = importFolder.list();
+        for (String currentFile : filesInFolder) {
+            if (currentFile.contains("scandata")) {
+                scandataFile = currentFile;
+            } else if (currentFile.contains("marc.xml")) {
+                marcFile = currentFile;
+            } else if (currentFile.contains(internetArchiveID + "_abbyy.gz")) {
+                abbyyFile = currentFile;
+            } else if (currentFile.contains(internetArchiveID + "_jp2.zip")) {
+                jp2File = currentFile;
+            }
+        }
+
+        if (scandataFile.equals("")) {
+            System.err.println("could not find scandata file.");
+            return false;
+        }
+
+        if (abbyyFile.equals("")) {
+            System.err.println("could not find abbyy archive.");
+            return false;
+        }
+
+        if (jp2File.equals("")) {
+            System.err.println("could not find jp2 archive.");
+            return false;
+        }
+
+        // if scandata is compressed, unzip scandata and set filename to xml file
+        if (scandataFile.contains(".zip")) {
+            logger.debug("Unzip scandata file");
+            File zipfile = new File(importFolder, scandataFile);
+            unzipFile(zipfile, importFolder);
+            String[] filelist = importFolder.list();
+            for (String currentFile : filelist) {
+                if (currentFile.contains("scandata.xml")) {
+                    scandataFile = currentFile;
+                    break;
+                }
+            }
+        }
+
+        // unpack images
+        if (jp2File.endsWith(".gz")) {
+            File gzFile = new File(importFolder, jp2File);
+            try {
+                unGzip(gzFile, importFolder);
+                jp2File = jp2File.replace(".gz", "");
+            } catch (FileNotFoundException e) {
+                logger.error(e);
+                return false;
+            } catch (IOException e) {
+                logger.error(e);
+                return false;
+            }
+        }
+        if (jp2File.endsWith(".tar")) {
+            File tarfile = new File(importFolder, jp2File);
+            try {
+                unTar(tarfile, importFolder);
+            } catch (FileNotFoundException e) {
+                logger.error(e);
+                return false;
+            } catch (IOException e) {
+                logger.error(e);
+                return false;
+            } catch (ArchiveException e) {
+                logger.error(e);
+                return false;
+            }
+        }
+
+        if (jp2File.endsWith(".zip")) {
+            logger.debug("Unzip jp2 file");
+            File zipfile = new File(importFolder, jp2File);
+            unzipFile(zipfile, importFolder);
+        }
+
+        // copy files to import folder 
+        File imageFolder = new File(importFolder.getAbsolutePath() + File.separator + internetArchiveID + "_jp2" + File.separator);
+        if (!imageFolder.exists() || !imageFolder.isDirectory() || imageFolder.list().length == 0) {
+            System.err.println("Image folder does not exist. Expected folder is " + imageFolder.getAbsolutePath());
+            return false;
+        }
+
+        List<String> imagenameList = Arrays.asList(imageFolder.list());
+        Collections.sort(imagenameList);
+
+        logger.debug("import " + imagenameList.size() + " files.");
+        File scandata = new File(importFolder.getAbsolutePath() + File.separator + scandataFile);
+        List<ImageInformation> pages = readPageInformation(scandata, imagenameList);
+
+        if (pages == null) {
+            return false;
+        }
+
+        createPagination(null, monograph, ff.getDigitalDocument(), pages, prefs, 1);
+
+        // find master folder
+        File goobiImagesFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/");
+        String[] subdirectories = goobiImagesFolder.list(DIRECTORY_FILTER);
+        String masterFolderName = "";
+        for (String dir : subdirectories) {
+            if (dir.startsWith("master_") && dir.endsWith("_media")) {
+                masterFolderName = dir;
+                break;
+            }
+        }
+        if (masterFolderName.equals("")) {
+            System.err.println("Cannot find master folder for process " + processid);
+            return false;
+        }
+        try {
+            logger.debug("Import images to " + masterFolderName);
+            File masterFolder = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/");
+            for (int i = 0; i < pages.size(); i++) {
+                ImageInformation ii = pages.get(i);
+                if (ii.isAddToAccessFormats()) {
+                    File currentImage = new File(imageFolder, ii.getImageName());
+                    FileUtils.copyFileToDirectory(currentImage, masterFolder);
+                }
+            }
+
+            //                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/"));
+
+            File scandataImportFile = new File(importFolder, scandataFile);
+            File marcImportFile = new File(importFolder, marcFile);
+            File abbyyImportFile = new File(importFolder, abbyyFile);
+            File jp2ImportFile = new File(importFolder, jp2File);
+
+            File dest = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/");
+            logger.debug("Import downloaded data to " + dest.getAbsolutePath());
+
+            FileUtils.copyFileToDirectory(scandataImportFile, dest);
+            FileUtils.copyFileToDirectory(marcImportFile, dest);
+            FileUtils.copyFileToDirectory(abbyyImportFile, dest);
+            FileUtils.copyFileToDirectory(jp2ImportFile, dest);
+
+        } catch (IOException e) {
+            logger.error(e);
+        }
+
+        // write mets file
+        try {
+            ff.write("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
+        } catch (WriteException e) {
+            logger.error(e);
+        }
+
+        return false;
+    }
+
+    private static boolean importJournal(Helper h, DocStruct periodical, Fileformat ff, Prefs prefs, String processid) throws PreferencesException {
         String foldername = h.getDownloadFolder();
 
         List<String> ids = h.getInternetArchiveIdentifier();
@@ -189,7 +400,6 @@ public class InternetArchiveParser {
             }
         }
 
-        DocStruct periodical = ff.getDigitalDocument().getLogicalDocStruct();
         DocStruct periodicalVolume = periodical.getAllChildren().get(0);
         List<DocStruct> periodicalIssues = periodicalVolume.getAllChildren();
 
@@ -388,6 +598,7 @@ public class InternetArchiveParser {
             }
         }
         return true;
+
     }
 
     private static int createPagination(DocStruct periodicalVolume, DocStruct issue, DigitalDocument digitalDocument, List<ImageInformation> pages,
@@ -407,7 +618,9 @@ public class InternetArchiveParser {
                     metaLogPageNumber.setValue(image.getLogicalNumber());
                     dsPage.addMetadata(metaLogPageNumber);
                     issue.addReferenceTo(dsPage, "logical_physical");
-                    periodicalVolume.addReferenceTo(dsPage, "logical_physical");
+                    if (periodicalVolume != null) {
+                        periodicalVolume.addReferenceTo(dsPage, "logical_physical");
+                    }
                     dsPage.setImageName(image.getImageName());
                     logger.debug("create pagination for " + image);
 
@@ -881,9 +1094,13 @@ public class InternetArchiveParser {
         }
     }
 
-    private static boolean writeIdentifier(Helper helper) {
-
-        List<String> values = helper.getInternetArchiveIdentifier();
+    private static boolean writeIdentifier(Helper helper, String name) {
+        List<String> values = new ArrayList<String>();
+        if (name == null || name.isEmpty()) {
+            values = helper.getInternetArchiveIdentifier();
+        } else {
+            values.add(name);
+        }
 
         if (values != null && !values.isEmpty()) {
             logger.debug("Adding " + values.size() + " targets to download list.");
@@ -927,7 +1144,7 @@ public class InternetArchiveParser {
     private static Options generateOptions() {
         Options options = new Options();
 
-        Option operation = new Option("o", "operation", true, "operation - allowed values are 'download' and 'import' ");
+        Option operation = new Option("o", "operation", true, "operation - allowed values are 'download', 'downloadbook' and 'import' ");
         operation.setArgs(1);
         operation.setArgName("operation");
         operation.setRequired(true);
@@ -950,6 +1167,12 @@ public class InternetArchiveParser {
         properties.setArgName("config");
         properties.setRequired(false);
         options.addOption(properties);
+
+        Option name = new Option("n", "name", false, "internet archive identifier for books (b-number)");
+        name.setArgs(1);
+        name.setArgName("name");
+        name.setRequired(false);
+        options.addOption(name);
 
         options.addOption(new Option("h", "help", false, "help"));
 
