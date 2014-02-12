@@ -76,7 +76,7 @@ public class InternetArchiveParser {
     private static boolean useProxy = false;
 
     // TODO importJournal und importMonograph zusammenlegen oder duplizierten Code in eigene Methode auslagern
-    
+
     public static void main(String[] args) {
 
         Options options = generateOptions();
@@ -206,8 +206,7 @@ public class InternetArchiveParser {
 
     private static boolean importMonograph(Helper h, DocStruct monograph, Fileformat ff, Prefs prefs, String processid, String internetArchiveID)
             throws PreferencesException {
-       
-        
+
         String foldername = h.getDownloadFolder();
 
         logger.debug("import " + internetArchiveID);
@@ -374,6 +373,29 @@ public class InternetArchiveParser {
             ff.write("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
         } catch (WriteException e) {
             logger.error(e);
+        }
+        // delete import data
+
+        System.gc();
+
+        File processFile = new File(folder, processid + ".txt");
+        logger.debug("try to delete " + processFile.getAbsolutePath());
+        if (processFile.exists()) {
+            FileUtils.deleteQuietly(processFile);
+        }
+
+        File issueFile = new File(folder, internetArchiveID + ".txt");
+        logger.debug("try to delete " + issueFile.getAbsolutePath());
+        if (issueFile.exists()) {
+            FileUtils.deleteQuietly(issueFile);
+        }
+        logger.debug("try to delete " + importFolder.getAbsolutePath());
+        if (importFolder.exists()) {
+            try {
+                FileUtils.deleteDirectory(importFolder);
+            } catch (IOException e) {
+                logger.error(e);
+            }
         }
 
         return true;
