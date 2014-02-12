@@ -75,6 +75,8 @@ public class InternetArchiveParser {
 
     private static boolean useProxy = false;
 
+    // TODO importJournal und importMonograph zusammenlegen oder duplizierten Code in eigene Methode auslagern
+    
     public static void main(String[] args) {
 
         Options options = generateOptions();
@@ -374,7 +376,7 @@ public class InternetArchiveParser {
             logger.error(e);
         }
 
-        return false;
+        return true;
     }
 
     private static boolean importJournal(Helper h, DocStruct periodical, Fileformat ff, Prefs prefs, String processid) throws PreferencesException {
