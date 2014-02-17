@@ -207,8 +207,7 @@ public class InternetArchiveParser {
     private static boolean importMonograph(Helper h, DocStruct monograph, Fileformat ff, Prefs prefs, String processid, String internetArchiveID)
             throws PreferencesException {
 
-        String foldername = h.getDownloadFolder();
-
+        String foldername  = "/opt/digiverso/goobi/metadata/" + processid + "/images/source/";
         logger.debug("import " + internetArchiveID);
 
         File folder = new File(foldername);
@@ -351,18 +350,18 @@ public class InternetArchiveParser {
 
             //                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/"));
 
-            File scandataImportFile = new File(importFolder, scandataFile);
-            File marcImportFile = new File(importFolder, marcFile);
-            File abbyyImportFile = new File(importFolder, abbyyFile);
-            File jp2ImportFile = new File(importFolder, jp2File);
+//            File scandataImportFile = new File(importFolder, scandataFile);
+//            File marcImportFile = new File(importFolder, marcFile);
+//            File abbyyImportFile = new File(importFolder, abbyyFile);
+//            File jp2ImportFile = new File(importFolder, jp2File);
 
-            File dest = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/");
-            logger.debug("Import downloaded data to " + dest.getAbsolutePath());
+//            File dest = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/");
+//            logger.debug("Import downloaded data to " + dest.getAbsolutePath());
 
-            FileUtils.copyFileToDirectory(scandataImportFile, dest);
-            FileUtils.copyFileToDirectory(marcImportFile, dest);
-            FileUtils.copyFileToDirectory(abbyyImportFile, dest);
-            FileUtils.copyFileToDirectory(jp2ImportFile, dest);
+//            FileUtils.copyFileToDirectory(scandataImportFile, dest);
+//            FileUtils.copyFileToDirectory(marcImportFile, dest);
+//            FileUtils.copyFileToDirectory(abbyyImportFile, dest);
+//            FileUtils.copyFileToDirectory(jp2ImportFile, dest);
 
         } catch (IOException e) {
             logger.error(e);
@@ -389,14 +388,14 @@ public class InternetArchiveParser {
         if (issueFile.exists()) {
             FileUtils.deleteQuietly(issueFile);
         }
-        logger.debug("try to delete " + importFolder.getAbsolutePath());
-        if (importFolder.exists()) {
-            try {
-                FileUtils.deleteDirectory(importFolder);
-            } catch (IOException e) {
-                logger.error(e);
-            }
-        }
+//        logger.debug("try to delete " + importFolder.getAbsolutePath());
+//        if (importFolder.exists()) {
+//            try {
+//                FileUtils.deleteDirectory(importFolder);
+//            } catch (IOException e) {
+//                logger.error(e);
+//            }
+//        }
 
         return true;
     }
