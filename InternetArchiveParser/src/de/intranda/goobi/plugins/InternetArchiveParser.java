@@ -648,9 +648,23 @@ public class InternetArchiveParser {
                     logger.debug("create pagination for " + image);
 
                     if (image.getType() != null && !image.getType().isEmpty() && !image.getType().equalsIgnoreCase("Normal")) {
-                        DocStructType dst = prefs.getDocStrctTypeByName(image.getType());
-                        logger.debug("Try to create sub docstruct for " + image.getType());
+                        DocStructType dst = null;
+                        if (image.getType().equalsIgnoreCase("contents")) {
+                            dst = prefs.getDocStrctTypeByName("TableOfContents");
+                        } else if (image.getType().equalsIgnoreCase("title")) {
+                            dst = prefs.getDocStrctTypeByName("TitlePage");
+                        } else if (image.getType().equalsIgnoreCase("title")) {
+                            dst = prefs.getDocStrctTypeByName("cover");
+                        } else if (image.getType().equalsIgnoreCase("Cover")) {
+                            dst = prefs.getDocStrctTypeByName("TitlePage");
+                        } else if (image.getType().equalsIgnoreCase("preface")) {
+                            dst = prefs.getDocStrctTypeByName("Preface");
+                        } else if (image.getType().equalsIgnoreCase("index")) {
+                            dst = prefs.getDocStrctTypeByName("Index");
+                        }
+
                         if (dst != null) {
+                            logger.debug("Try to create sub docstruct for " + image.getType());
                             try {
                                 DocStruct docStruct = digitalDocument.createDocStruct(dst);
                                 issue.addChild(docStruct);
