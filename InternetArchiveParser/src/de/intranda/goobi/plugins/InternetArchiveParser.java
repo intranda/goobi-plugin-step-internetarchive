@@ -207,6 +207,10 @@ public class InternetArchiveParser {
     private static boolean importMonograph(Helper h, DocStruct monograph, Fileformat ff, Prefs prefs, String processid, String internetArchiveID)
             throws PreferencesException {
 
+        if (monograph.getType().isAnchor()) {
+            monograph = monograph.getAllChildren().get(0);
+        }
+        
         String foldername = "/opt/digiverso/goobi/metadata/" + processid + "/images/source/";
         logger.debug("import " + internetArchiveID);
 
