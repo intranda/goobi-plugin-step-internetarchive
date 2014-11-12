@@ -40,6 +40,7 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
@@ -210,7 +211,7 @@ public class InternetArchiveParser {
         if (monograph.getType().isAnchor()) {
             monograph = monograph.getAllChildren().get(0);
         }
-        
+
         String foldername = "/opt/digiverso/goobi/metadata/" + processid + "/images/source/";
         logger.debug("import " + internetArchiveID);
 
@@ -663,7 +664,7 @@ public class InternetArchiveParser {
                             dst = prefs.getDocStrctTypeByName("Preface");
                         } else if (image.getType().equalsIgnoreCase("index")) {
                             dst = prefs.getDocStrctTypeByName("Index");
-                        } 
+                        }
 
                         if (dst != null) {
                             logger.debug("Try to create sub docstruct for " + image.getType());
@@ -890,7 +891,9 @@ public class InternetArchiveParser {
             String outputFilename = helper.getDownloadFolder() + File.separator + filename + ".txt";
 
             logger.debug("Download file list for entry " + line);
-            downloadFile(line, outputFilename, helper);
+            if (!downloadFile(line, outputFilename, helper)) {
+                return false;
+            }
 
             List<String> urls = new ArrayList<String>();
             try {
@@ -938,27 +941,36 @@ public class InternetArchiveParser {
             }
             logger.debug("Download scandata file " + scandataPart);
             if (scandataPart.contains(filename)) {
-                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart,
-                        helper);
+                if (!downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator
+                        + scandataPart, helper)) {
+                    return false;
+                }
+
             } else {
-                downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename + "_"
-                        + scandataPart, helper);
+                if (!downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename
+                        + "_" + scandataPart, helper)) {
+                    return false;
+                }
 
             }
             logger.debug("Download marc file " + marcPart);
-            downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart, helper);
 
+            if (!downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart, helper)) {
+                return false;
+            }
             logger.debug("Download abbyy file " + abbyyPart);
-            downloadFile("http://archive.org" + urlPart + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart, helper);
-
+            if (!downloadFile("http://archive.org" + urlPart + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart, helper)) {
+                return false;
+            }
             logger.debug("Download jp2 file " + jp2Part);
-            downloadFile("http://archive.org" + urlPart + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part, helper);
-
+            if (!downloadFile("http://archive.org" + urlPart + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part, helper)) {
+                return false;
+            }
         }
         return true;
     }
 
-    private static void downloadFile(String line, String outputFilename, Helper h) {
+    private static boolean downloadFile(String line, String outputFilename, Helper h) {
         if (!useProxy) {
             downloadFileWithoutProxy(line, outputFilename);
         } else {
@@ -976,7 +988,10 @@ public class InternetArchiveParser {
                     httpclient.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, proxy);
                 }
                 byte[] response = httpclient.execute(method, responseHandler);
-
+                if (response == null) {
+                    logger.error("Response stream is null");
+                    return false;
+                }
                 istr = new ByteArrayInputStream(response);
                 ostr = new FileOutputStream(outputFilename);
 
@@ -988,6 +1003,7 @@ public class InternetArchiveParser {
                 }
             } catch (Exception e) {
                 logger.error("Unable to connect to url " + line, e);
+                return false;
             } finally {
                 method.releaseConnection();
                 if (httpclient != null) {
@@ -1009,11 +1025,17 @@ public class InternetArchiveParser {
                 }
             }
         }
+        return true;
     }
 
     static ResponseHandler<byte[]> responseHandler = new ResponseHandler<byte[]>() {
         @Override
         public byte[] handleResponse(HttpResponse response) throws ClientProtocolException, IOException {
+            if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+                logger.error("Wrong status code : " + response.getStatusLine().getStatusCode());
+                System.err.println("Download was incomplete, got status code " + response.getStatusLine().getStatusCode());
+                return null;
+            }
             HttpEntity entity = response.getEntity();
             if (entity != null) {
                 return EntityUtils.toByteArray(entity);
