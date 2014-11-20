@@ -89,7 +89,7 @@ public class InternetArchiveParser {
                 HelpFormatter hf = new HelpFormatter();
                 hf.setWidth(79);
                 hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
-                return;
+                System.exit(1);
             }
 
             if (!cl.hasOption("i") || cl.getOptionValue("i").equals("")) {
@@ -97,7 +97,7 @@ public class InternetArchiveParser {
                 HelpFormatter hf = new HelpFormatter();
                 hf.setWidth(79);
                 hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
-                return;
+                System.exit(1);
             }
 
             String config = "/opt/digiverso/goobi/scripts/internetarchive.properties";
@@ -115,11 +115,11 @@ public class InternetArchiveParser {
                 logger.debug("started internet archive parser with download option for journals");
                 if (!writeIdentifier(h, null)) {
                     System.err.println("Can not write identifier list.");
-                    return;
+                    System.exit(1);
                 }
                 if (!download(h)) {
                     System.err.println("Can not download data.");
-                    return;
+                    System.exit(1);
                 }
             } else if (cl.getOptionValue("o").equalsIgnoreCase("downloadbook")) {
                 logger.debug("started internet archive parser with download option for monographs");
@@ -128,16 +128,16 @@ public class InternetArchiveParser {
                     HelpFormatter hf = new HelpFormatter();
                     hf.setWidth(79);
                     hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
-                    return;
+                    System.exit(1);
                 }
                 String name = cl.getOptionValue("n");
                 if (!writeIdentifier(h, name)) {
                     System.err.println("Can not write identifier list.");
-                    return;
+                    System.exit(1);
                 }
                 if (!download(h)) {
                     System.err.println("Can not download data.");
-                    return;
+                    System.exit(1);
                 }
             }
 
@@ -150,7 +150,7 @@ public class InternetArchiveParser {
                     HelpFormatter hf = new HelpFormatter();
                     hf.setWidth(79);
                     hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
-                    return;
+                    System.exit(1);
                 }
                 String name = null;
                 if (cl.hasOption("n") && !cl.getOptionValue("n").equals("")) {
@@ -161,7 +161,7 @@ public class InternetArchiveParser {
                 try {
                     if (!importData(h, prefsname, processid, name)) {
                         System.err.println("Can not import data.");
-                        return;
+                        System.exit(1);
                     }
                 } catch (PreferencesException e) {
                     logger.error(e);
@@ -180,7 +180,7 @@ public class InternetArchiveParser {
             HelpFormatter hf = new HelpFormatter();
             hf.setWidth(79);
             hf.printHelp("java -jar InternetArchiveParser.jar [options]", options);
-            return;
+            System.exit(1);
         }
 
     }
