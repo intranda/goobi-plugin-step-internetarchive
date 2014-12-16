@@ -220,26 +220,33 @@ public class InternetArchiveParser {
             return false;
         }
 
-        //        File importFolder = new File(folder, internetArchiveID);
-        //        if (!importFolder.exists() || !importFolder.isDirectory()) {
-        //            System.err.println("Folder " + importFolder.getAbsolutePath() + " does not exist. abort");
-        //            return false;
-        //        }
         File importFolder = folder;
         String scandataFile = "";
-        String marcFile = "";
         String abbyyFile = "";
         String jp2File = "";
         String[] filesInFolder = importFolder.list();
         for (String currentFile : filesInFolder) {
             if (currentFile.contains("scandata")) {
                 scandataFile = currentFile;
-            } else if (currentFile.contains("marc.xml")) {
-                marcFile = currentFile;
             } else if (currentFile.contains(internetArchiveID + "_abbyy.gz")) {
                 abbyyFile = currentFile;
             } else if (currentFile.contains(internetArchiveID + "_jp2.zip")) {
                 jp2File = currentFile;
+            }
+        }
+
+        if (abbyyFile.isEmpty()) {
+            for (String url : filesInFolder) {
+                if (url.contains(internetArchiveID.substring(0, internetArchiveID.indexOf('.')) + "_abbyy.gz")) {
+                    abbyyFile = url.substring(9, url.indexOf("\">"));
+                }
+            }
+        }
+        if (jp2File.isEmpty()) {
+            for (String url : filesInFolder) {
+                if (url.contains(internetArchiveID.substring(0, internetArchiveID.indexOf('.')) + "_jp2.zip")) {
+                    jp2File = url.substring(9, url.indexOf("\">"));
+                }
             }
         }
 
