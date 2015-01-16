@@ -228,27 +228,14 @@ public class InternetArchiveParser {
         for (String currentFile : filesInFolder) {
             if (currentFile.contains("scandata")) {
                 scandataFile = currentFile;
-            } else if (currentFile.contains(internetArchiveID + "_abbyy.gz")) {
+            } else if (currentFile.endsWith("_abbyy.gz")) {
                 abbyyFile = currentFile;
-            } else if (currentFile.contains(internetArchiveID + "_jp2.zip")) {
+            } else if (currentFile.endsWith("_jp2.zip")) {
                 jp2File = currentFile;
             }
         }
 
-        if (abbyyFile.isEmpty()) {
-            for (String url : filesInFolder) {
-                if (url.contains(internetArchiveID.substring(0, internetArchiveID.indexOf('.')) + "_abbyy.gz")) {
-                    abbyyFile = url.substring(9, url.indexOf("\">"));
-                }
-            }
-        }
-        if (jp2File.isEmpty()) {
-            for (String url : filesInFolder) {
-                if (url.contains(internetArchiveID.substring(0, internetArchiveID.indexOf('.')) + "_jp2.zip")) {
-                    jp2File = url.substring(9, url.indexOf("\">"));
-                }
-            }
-        }
+      
 
         if (scandataFile.equals("")) {
             System.err.println("could not find scandata file.");
