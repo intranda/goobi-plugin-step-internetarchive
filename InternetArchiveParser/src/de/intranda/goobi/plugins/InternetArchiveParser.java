@@ -302,8 +302,9 @@ public class InternetArchiveParser {
             unzipFile(zipfile, importFolder);
         }
 
+        String imagefoldername = jp2File.substring(0, jp2File.indexOf("."));
         // copy files to import folder 
-        File imageFolder = new File(importFolder.getAbsolutePath() + File.separator + internetArchiveID + "_jp2" + File.separator);
+        File imageFolder = new File(importFolder.getAbsolutePath() + File.separator + imagefoldername + File.separator);
         if (!imageFolder.exists() || !imageFolder.isDirectory() || imageFolder.list().length == 0) {
             System.err.println("Image folder does not exist. Expected folder is " + imageFolder.getAbsolutePath());
             return false;
@@ -347,20 +348,7 @@ public class InternetArchiveParser {
                 }
             }
 
-            //                FileUtils.copyDirectory(imageFolder, new File("/opt/digiverso/goobi/metadata/" + processid + "/images/" + masterFolderName + "/"));
 
-            //            File scandataImportFile = new File(importFolder, scandataFile);
-            //            File marcImportFile = new File(importFolder, marcFile);
-            //            File abbyyImportFile = new File(importFolder, abbyyFile);
-            //            File jp2ImportFile = new File(importFolder, jp2File);
-
-            //            File dest = new File("/opt/digiverso/goobi/metadata/" + processid + "/images/source/");
-            //            logger.debug("Import downloaded data to " + dest.getAbsolutePath());
-
-            //            FileUtils.copyFileToDirectory(scandataImportFile, dest);
-            //            FileUtils.copyFileToDirectory(marcImportFile, dest);
-            //            FileUtils.copyFileToDirectory(abbyyImportFile, dest);
-            //            FileUtils.copyFileToDirectory(jp2ImportFile, dest);
 
         } catch (IOException e) {
             logger.error(e);
