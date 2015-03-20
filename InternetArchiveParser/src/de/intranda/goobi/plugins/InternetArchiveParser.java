@@ -907,13 +907,17 @@ public class InternetArchiveParser {
                 if (url.contains("<title>")) {
                     urlPart = url.substring(url.indexOf("<title>") + 15, url.indexOf("</title>")).trim();
                 } else if (url.contains("scandata")) {
-                    scandataPart = url.substring(9, url.indexOf("\">"));
+                    scandataPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+//                    scandataPart = url.substring(9, url.indexOf("\">"));
                 } else if (url.contains("marc.xml")) {
-                    marcPart = url.substring(9, url.indexOf("\">"));
+                    marcPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+//                    marcPart = url.substring(9, url.indexOf("\">"));
                 } else if (url.contains(filename + "_abbyy.gz")) {
-                    abbyyPart = url.substring(9, url.indexOf("\">"));
+                    abbyyPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+//                    abbyyPart = url.substring(9, url.indexOf("\">"));
                 } else if (url.contains(filename + "_jp2.zip")) {
-                    jp2Part = url.substring(9, url.indexOf("\">"));
+                    jp2Part = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+//                    jp2Part = url.substring(9, url.indexOf("\">"));
                 }
             }
 
