@@ -897,59 +897,47 @@ public class InternetArchiveParser {
             }
 
             String scandataPart = "";
-            String marcPart = "";
             String abbyyPart = "";
             String jp2Part = "";
 
-            String urlPart = "";
-
             for (String url : urls) {
-                if (url.contains("<title>")) {
-                    urlPart = url.substring(url.indexOf("<title>") + 15, url.indexOf("</title>")).trim();
-                } else if (url.contains("scandata")) {
+            if (url.contains("scandata")) {
                     scandataPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
-//                    scandataPart = url.substring(9, url.indexOf("\">"));
-                } else if (url.contains("marc.xml")) {
-                    marcPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
-//                    marcPart = url.substring(9, url.indexOf("\">"));
                 } else if (url.contains(filename + "_abbyy.gz")) {
                     abbyyPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
-//                    abbyyPart = url.substring(9, url.indexOf("\">"));
                 } else if (url.contains(filename + "_jp2.zip")) {
                     jp2Part = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
-//                    jp2Part = url.substring(9, url.indexOf("\">"));
                 }
             }
 
+            if (!line.endsWith("/"))  {
+                line = line + "/";
+            }
+            
             File downloadFolder = new File(helper.getDownloadFolder() + filename);
             if (!downloadFolder.exists()) {
                 downloadFolder.mkdir();
             }
             logger.debug("Download scandata file " + scandataPart);
             if (scandataPart.contains(filename)) {
-                if (!downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator
+                if (!downloadFile(line + scandataPart, helper.getDownloadFolder() + filename + File.separator
                         + scandataPart, helper)) {
                     return false;
                 }
 
             } else {
-                if (!downloadFile("http://archive.org" + urlPart + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename
+                if (!downloadFile(line + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename
                         + "_" + scandataPart, helper)) {
                     return false;
                 }
-
             }
-            logger.debug("Download marc file " + marcPart);
-
-            if (!downloadFile("http://archive.org" + urlPart + marcPart, helper.getDownloadFolder() + filename + File.separator + marcPart, helper)) {
-                return false;
-            }
+            
             logger.debug("Download abbyy file " + abbyyPart);
-            if (!downloadFile("http://archive.org" + urlPart + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart, helper)) {
+            if (!downloadFile(line + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart, helper)) {
                 return false;
             }
             logger.debug("Download jp2 file " + jp2Part);
-            if (!downloadFile("http://archive.org" + urlPart + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part, helper)) {
+            if (!downloadFile(line + jp2Part, helper.getDownloadFolder() + filename + File.separator + jp2Part, helper)) {
                 return false;
             }
         }
