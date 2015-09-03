@@ -905,7 +905,7 @@ public class InternetArchiveParser {
                     scandataPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
                 } else if (url.contains(filename + "_abbyy.gz")) {
                     abbyyPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
-                } else if (url.contains(filename + "_jp2.zip")) {
+                } else if (url.contains(filename + "_jp2.zip") && !url.contains("orig") && !url.contains("raw")) {
                     jp2Part = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
                 }
             }
