@@ -302,7 +302,7 @@ public class InternetArchiveParser {
             unzipFile(zipfile, importFolder);
         }
 
-        String imagefoldername = jp2File.substring(0, jp2File.indexOf("."));
+        String imagefoldername = jp2File.substring(0, jp2File.lastIndexOf("."));
         // copy files to import folder 
         File imageFolder = new File(importFolder.getAbsolutePath() + File.separator + imagefoldername + File.separator);
         if (!imageFolder.exists() || !imageFolder.isDirectory() || imageFolder.list().length == 0) {
