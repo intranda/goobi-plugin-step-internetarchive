@@ -102,7 +102,7 @@ public class InternetArchiveParser {
 
             String config = "/opt/digiverso/goobi/scripts/internetarchive.properties";
             if (cl.hasOption("c") && !cl.getOptionValue("c").equals("")) {
-                config = cl.getOptionValue("cf");
+                config = cl.getOptionValue("c");
             }
 
             logger.debug("loading configuration file " + config);
