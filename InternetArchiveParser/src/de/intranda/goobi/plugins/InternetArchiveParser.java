@@ -235,8 +235,6 @@ public class InternetArchiveParser {
             }
         }
 
-      
-
         if (scandataFile.equals("")) {
             System.err.println("could not find scandata file.");
             return false;
@@ -347,8 +345,6 @@ public class InternetArchiveParser {
                     FileUtils.copyFileToDirectory(currentImage, masterFolder);
                 }
             }
-
-
 
         } catch (IOException e) {
             logger.error(e);
@@ -616,6 +612,7 @@ public class InternetArchiveParser {
         DocStructType dsTypePage = prefs.getDocStrctTypeByName("page");
         DocStruct physical = digitalDocument.getPhysicalDocStruct();
 
+        DocStruct toc = null;
         for (ImageInformation image : pages) {
             if (image.isAddToAccessFormats()) {
                 try {
@@ -651,8 +648,16 @@ public class InternetArchiveParser {
                         if (dst != null) {
                             logger.debug("Try to create sub docstruct for " + image.getType());
                             try {
-                                DocStruct docStruct = digitalDocument.createDocStruct(dst);
-                                issue.addChild(docStruct);
+                                DocStruct docStruct = null;
+                                if (dst.getName().equals("TableOfContents") && toc != null) {
+                                    docStruct = toc;
+                                } else {
+                                    docStruct = digitalDocument.createDocStruct(dst);
+                                    issue.addChild(docStruct);
+                                    if (dst.getName().equals("TableOfContents")) {
+                                        toc = docStruct;
+                                    }
+                                }
                                 docStruct.addReferenceTo(dsPage, "logical_physical");
 
                             } catch (TypeNotAllowedForParentException e) {
@@ -901,37 +906,36 @@ public class InternetArchiveParser {
             String jp2Part = "";
 
             for (String url : urls) {
-            if (url.contains("scandata")) {
-                    scandataPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+                if (url.contains("scandata")) {
+                    scandataPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>"));
                 } else if (url.contains(filename + "_abbyy.gz")) {
-                    abbyyPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+                    abbyyPart = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>"));
                 } else if (url.contains(filename + "_jp2.zip") && !url.contains("orig") && !url.contains("raw")) {
-                    jp2Part = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>")); 
+                    jp2Part = url.substring(url.indexOf("\">") + 2, url.indexOf("</a>"));
                 }
             }
 
-            if (!line.endsWith("/"))  {
+            if (!line.endsWith("/")) {
                 line = line + "/";
             }
-            
+
             File downloadFolder = new File(helper.getDownloadFolder() + filename);
             if (!downloadFolder.exists()) {
                 downloadFolder.mkdir();
             }
             logger.debug("Download scandata file " + scandataPart);
             if (scandataPart.contains(filename)) {
-                if (!downloadFile(line + scandataPart, helper.getDownloadFolder() + filename + File.separator
-                        + scandataPart, helper)) {
+                if (!downloadFile(line + scandataPart, helper.getDownloadFolder() + filename + File.separator + scandataPart, helper)) {
                     return false;
                 }
 
             } else {
-                if (!downloadFile(line + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename
-                        + "_" + scandataPart, helper)) {
+                if (!downloadFile(line + scandataPart, helper.getDownloadFolder() + filename + File.separator + filename + "_" + scandataPart,
+                        helper)) {
                     return false;
                 }
             }
-            
+
             logger.debug("Download abbyy file " + abbyyPart);
             if (!downloadFile(line + abbyyPart, helper.getDownloadFolder() + filename + File.separator + abbyyPart, helper)) {
                 return false;
@@ -1020,6 +1024,7 @@ public class InternetArchiveParser {
     };
 
     private static void downloadFileWithoutProxy(String line, String outputFilename) {
+        @SuppressWarnings("resource")
         HttpClient client = new DefaultHttpClient();
         HttpGet method = new HttpGet(line);
         InputStream istr = null;
