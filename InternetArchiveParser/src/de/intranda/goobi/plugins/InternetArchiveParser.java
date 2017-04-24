@@ -19,6 +19,8 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -37,6 +39,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
@@ -62,6 +65,7 @@ import ugh.dl.Fileformat;
 import ugh.dl.Metadata;
 import ugh.dl.MetadataType;
 import ugh.dl.Prefs;
+import ugh.exceptions.DocStructHasNoTypeException;
 import ugh.exceptions.MetadataTypeNotAllowedException;
 import ugh.exceptions.PreferencesException;
 import ugh.exceptions.ReadException;
@@ -224,6 +228,7 @@ public class InternetArchiveParser {
         String scandataFile = "";
         String abbyyFile = "";
         String jp2File = "";
+        String metaFile = "";
         String[] filesInFolder = importFolder.list();
         for (String currentFile : filesInFolder) {
             if (currentFile.contains("scandata")) {
@@ -232,6 +237,8 @@ public class InternetArchiveParser {
                 abbyyFile = currentFile;
             } else if (currentFile.endsWith("_jp2.zip")) {
                 jp2File = currentFile;
+            } else if (currentFile.endsWith("_meta.xml")) {
+                metaFile = currentFile;
             }
         }
 
@@ -350,6 +357,24 @@ public class InternetArchiveParser {
             logger.error(e);
         }
 
+        // read AccessLicense from metaFile
+        if (StringUtils.isNotBlank(metaFile)) {
+            File meta = new File(folder, metaFile);
+
+            String value = getRightsMetadata(meta, h);
+            if (value != null) {
+                try {
+                    Metadata accessLicense = new Metadata(prefs.getMetadataTypeByName("AccessLicense"));
+                    accessLicense.setValue(value);
+                    monograph.addMetadata(accessLicense);
+                } catch (MetadataTypeNotAllowedException e) {
+                    logger.error(e);
+                } catch (DocStructHasNoTypeException e) {
+                    logger.error(e);
+                }
+            }
+        }
+
         // write mets file
         try {
             ff.write("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
@@ -381,6 +406,36 @@ public class InternetArchiveParser {
         //        }
 
         return true;
+    }
+
+    private static String getRightsMetadata(File metadataFile, Helper helper) {
+
+        SAXBuilder builder = new SAXBuilder(false);
+        try {
+            logger.debug("load scandata file " + metadataFile);
+            Document document = builder.build(metadataFile);
+            Element metadataElement = document.getRootElement();
+
+            Element rights = metadataElement.getChild("rights");
+            String value = rights.getText();
+            //            &lt;a href="http://creativecommons.org/publicdomain/mark/1.0/" rel="nofollow"&gt;This work is available under the Creative Commons, Public Domain Mark&lt;/a&gt;
+            //            href="(.+?)"
+            Pattern pattern = Pattern.compile("href=\"(.+?)\"");
+            Matcher matcher = pattern.matcher(value);
+            if (matcher.matches()) {
+                String url = matcher.group();
+              return  helper.getLicence(url);
+                // get normalized version for 
+            }
+            
+            
+
+        } catch (IOException e) {
+            logger.error(e);
+        } catch (JDOMException e) {
+            logger.error(e);
+        }
+        return null;
     }
 
     private static boolean importJournal(Helper h, DocStruct periodical, Fileformat ff, Prefs prefs, String processid) throws PreferencesException {
@@ -427,6 +482,7 @@ public class InternetArchiveParser {
             String marcFile = "";
             String abbyyFile = "";
             String jp2File = "";
+            String metaFile = "";
             String[] filesInFolder = importFolder.list();
             for (String currentFile : filesInFolder) {
                 if (currentFile.contains("scandata")) {
@@ -437,6 +493,8 @@ public class InternetArchiveParser {
                     abbyyFile = currentFile;
                 } else if (currentFile.contains(currentName + "_jp2.zip")) {
                     jp2File = currentFile;
+                }else if (currentFile.endsWith("_meta.xml")) {
+                    metaFile = currentFile;
                 }
             }
 
@@ -565,11 +623,31 @@ public class InternetArchiveParser {
                 FileUtils.copyFileToDirectory(abbyyImportFile, dest);
                 FileUtils.copyFileToDirectory(jp2ImportFile, dest);
 
+                
+                // read AccessLicense from metaFile
+                   if (StringUtils.isNotBlank(metaFile)) {
+                       File meta = new File(folder, metaFile);
+
+                       String value = getRightsMetadata(meta, h);
+                       if (value != null) {
+                           try {
+                               Metadata accessLicense = new Metadata(prefs.getMetadataTypeByName("AccessLicense"));
+                               accessLicense.setValue(value);
+                               issue.addMetadata(accessLicense);
+                           } catch (MetadataTypeNotAllowedException e) {
+                               logger.error(e);
+                           } catch (DocStructHasNoTypeException e) {
+                               logger.error(e);
+                           }
+                       }
+                   }
+                
             } catch (IOException e) {
                 logger.error(e);
             }
         }
 
+    
         // write mets file
         try {
             ff.write("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
@@ -611,7 +689,6 @@ public class InternetArchiveParser {
             Prefs prefs, int ordernumber) {
         DocStructType dsTypePage = prefs.getDocStrctTypeByName("page");
         DocStruct physical = digitalDocument.getPhysicalDocStruct();
-
         DocStruct toc = null;
         for (ImageInformation image : pages) {
             if (image.isAddToAccessFormats()) {

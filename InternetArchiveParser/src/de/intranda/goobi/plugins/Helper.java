@@ -61,9 +61,8 @@ public class Helper {
         List<String> answer = new ArrayList<String>();
         try {
 
-            PreparedStatement sQuery1 =
-                    this.con.prepareStatement("SELECT " + this.VALUECOLUMN + " FROM " + this.PROPERTYTABLE + " WHERE " + this.IDCOLUMN + " = ?  AND "
-                            + TITLECOLUMN + " like 'ISSUEID%' ORDER BY " + VALUECOLUMN + ";");
+            PreparedStatement sQuery1 = this.con.prepareStatement("SELECT " + this.VALUECOLUMN + " FROM " + this.PROPERTYTABLE + " WHERE "
+                    + this.IDCOLUMN + " = ?  AND " + TITLECOLUMN + " like 'ISSUEID%' ORDER BY " + VALUECOLUMN + ";");
             sQuery1.setString(1, this.PROCESSID);
             ResultSet resultS = sQuery1.executeQuery();
             while (!resultS.isLast()) {
@@ -86,12 +85,16 @@ public class Helper {
     public boolean getUseProxy() {
         return cfg.getBoolean("useProxy", false);
     }
-    
+
     public String getProxyUrl() {
         return cfg.getString("proxyurl", "http://10.215.195.23");
     }
-    
+
     public int getProxyPort() {
         return cfg.getInt("proxyport", 8080);
+    }
+
+    public String getLicence(String url) {
+        return cfg.getString(url, url);
     }
 }
