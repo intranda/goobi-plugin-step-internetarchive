@@ -423,8 +423,8 @@ public class InternetArchiveParser {
             //            href="(.+?)"
             Pattern pattern = Pattern.compile("href=\"(.+?)\"");
             Matcher matcher = pattern.matcher(value);
-            if (matcher.matches()) {
-                String url = matcher.group();
+            if (matcher.find()) {
+                String url = matcher.group(1);
 		logger.debug("matched original url: " + url);
 		logger.debug("new licence: " + helper.getLicence(url));
               return  helper.getLicence(url);
