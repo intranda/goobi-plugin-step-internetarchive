@@ -421,7 +421,7 @@ public class InternetArchiveParser {
             logger.debug("found rights: " + value);
             //            &lt;a href="http://creativecommons.org/publicdomain/mark/1.0/" rel="nofollow"&gt;This work is available under the Creative Commons, Public Domain Mark&lt;/a&gt;
             //            href="(.+?)"
-            Pattern pattern = Pattern.compile("href=\"https?://(.+?)/?\"|&gt;https?://(.+?)/?&lt;");
+            Pattern pattern = Pattern.compile("href=\"https?://(.+?)/?\"|>https?://(.+?)/?<");
             Matcher matcher = pattern.matcher(value);
             if (matcher.find()) {
                 String url = matcher.group(1)!=null ? matcher.group(1) : matcher.group(2);
