@@ -412,18 +412,21 @@ public class InternetArchiveParser {
 
         SAXBuilder builder = new SAXBuilder(false);
         try {
-            logger.debug("load scandata file " + metadataFile);
+            logger.debug("load metadata file " + metadataFile);
             Document document = builder.build(metadataFile);
             Element metadataElement = document.getRootElement();
 
             Element rights = metadataElement.getChild("rights");
             String value = rights.getText();
+            logger.debug("found rights: " + value);
             //            &lt;a href="http://creativecommons.org/publicdomain/mark/1.0/" rel="nofollow"&gt;This work is available under the Creative Commons, Public Domain Mark&lt;/a&gt;
             //            href="(.+?)"
             Pattern pattern = Pattern.compile("href=\"(.+?)\"");
             Matcher matcher = pattern.matcher(value);
             if (matcher.matches()) {
                 String url = matcher.group();
+		logger.debug("matched original url: " + url);
+		logger.debug("new licence: " + helper.getLicence(url));
               return  helper.getLicence(url);
                 // get normalized version for 
             }
