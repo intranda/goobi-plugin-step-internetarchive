@@ -417,6 +417,10 @@ public class InternetArchiveParser {
             Element metadataElement = document.getRootElement();
 
             Element rights = metadataElement.getChild("rights");
+            if (rights == null) {
+                System.err.println("no rights element in " + metadataFile.getName());
+                return null;
+            }
             String value = rights.getText();
             logger.debug("found rights: " + value);
             //            &lt;a href="http://creativecommons.org/publicdomain/mark/1.0/" rel="nofollow"&gt;This work is available under the Creative Commons, Public Domain Mark&lt;/a&gt;
@@ -424,14 +428,12 @@ public class InternetArchiveParser {
             Pattern pattern = Pattern.compile("href=\"https?://(.+?)/?\"|>https?://(.+?)/?<");
             Matcher matcher = pattern.matcher(value);
             if (matcher.find()) {
-                String url = matcher.group(1)!=null ? matcher.group(1) : matcher.group(2);
-		logger.debug("matched original url: " + url);
-		logger.debug("new licence: " + helper.getLicence(url));
-              return  helper.getLicence(url);
+                String url = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+                logger.debug("matched original url: " + url);
+                logger.debug("new licence: " + helper.getLicence(url));
+                return helper.getLicence(url);
                 // get normalized version for 
             }
-            
-            
 
         } catch (IOException e) {
             logger.error(e);
@@ -496,7 +498,7 @@ public class InternetArchiveParser {
                     abbyyFile = currentFile;
                 } else if (currentFile.contains(currentName + "_jp2.zip")) {
                     jp2File = currentFile;
-                }else if (currentFile.endsWith("_meta.xml")) {
+                } else if (currentFile.endsWith("_meta.xml")) {
                     metaFile = currentFile;
                 }
             }
@@ -626,31 +628,29 @@ public class InternetArchiveParser {
                 FileUtils.copyFileToDirectory(abbyyImportFile, dest);
                 FileUtils.copyFileToDirectory(jp2ImportFile, dest);
 
-                
                 // read AccessLicense from metaFile
-                   if (StringUtils.isNotBlank(metaFile)) {
-                       File meta = new File(folder, metaFile);
+                if (StringUtils.isNotBlank(metaFile)) {
+                    File meta = new File(folder, metaFile);
 
-                       String value = getRightsMetadata(meta, h);
-                       if (value != null) {
-                           try {
-                               Metadata accessLicense = new Metadata(prefs.getMetadataTypeByName("AccessLicense"));
-                               accessLicense.setValue(value);
-                               issue.addMetadata(accessLicense);
-                           } catch (MetadataTypeNotAllowedException e) {
-                               logger.error(e);
-                           } catch (DocStructHasNoTypeException e) {
-                               logger.error(e);
-                           }
-                       }
-                   }
-                
+                    String value = getRightsMetadata(meta, h);
+                    if (value != null) {
+                        try {
+                            Metadata accessLicense = new Metadata(prefs.getMetadataTypeByName("AccessLicense"));
+                            accessLicense.setValue(value);
+                            issue.addMetadata(accessLicense);
+                        } catch (MetadataTypeNotAllowedException e) {
+                            logger.error(e);
+                        } catch (DocStructHasNoTypeException e) {
+                            logger.error(e);
+                        }
+                    }
+                }
+
             } catch (IOException e) {
                 logger.error(e);
             }
         }
 
-    
         // write mets file
         try {
             ff.write("/opt/digiverso/goobi/metadata/" + processid + "/meta.xml");
