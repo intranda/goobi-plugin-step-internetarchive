@@ -190,7 +190,7 @@ public class InternetArchiveParser {
     }
 
     private static boolean importData(Helper h, String prefsname, String processid, String internetArchiveID) throws PreferencesException,
-            ReadException {
+    ReadException {
         Prefs prefs = new Prefs();
         prefs.loadPrefs(prefsname);
         logger.debug("Ruleset is " + prefsname);
@@ -308,7 +308,7 @@ public class InternetArchiveParser {
         }
 
         String imagefoldername = jp2File.substring(0, jp2File.lastIndexOf("."));
-        // copy files to import folder 
+        // copy files to import folder
         File imageFolder = new File(importFolder.getAbsolutePath() + File.separator + imagefoldername + File.separator);
         if (!imageFolder.exists() || !imageFolder.isDirectory() || imageFolder.list().length == 0) {
             System.err.println("Image folder does not exist. Expected folder is " + imageFolder.getAbsolutePath());
@@ -364,7 +364,15 @@ public class InternetArchiveParser {
             String value = getRightsMetadata(meta, h);
             if (value != null) {
                 try {
-                    Metadata accessLicense = new Metadata(prefs.getMetadataTypeByName("AccessLicense"));
+                    // replace old license texts
+                    MetadataType type = prefs.getMetadataTypeByName("AccessLicense");
+                    Metadata accessLicense = null;
+                    List<? extends Metadata> existingLicences = monograph.getAllMetadataByType(type);
+                    if (existingLicences.isEmpty()) {
+                        accessLicense = new Metadata(type);
+                    }  else {
+                        accessLicense = existingLicences.get(0);
+                    }
                     accessLicense.setValue(value);
                     monograph.addMetadata(accessLicense);
                 } catch (MetadataTypeNotAllowedException e) {
@@ -432,7 +440,7 @@ public class InternetArchiveParser {
                 logger.debug("matched original url: " + url);
                 logger.debug("new licence: " + helper.getLicence(url));
                 return helper.getLicence(url);
-                // get normalized version for 
+                // get normalized version for
             }
 
         } catch (IOException e) {
@@ -568,7 +576,7 @@ public class InternetArchiveParser {
                 unzipFile(zipfile, importFolder);
             }
 
-            // copy files to import folder 
+            // copy files to import folder
             File imageFolder = new File(importFolder.getAbsolutePath() + File.separator + currentName + "_jp2" + File.separator);
             if (!imageFolder.exists() || !imageFolder.isDirectory() || imageFolder.list().length == 0) {
                 System.err.println("Image folder does not exist. Expected folder is " + imageFolder.getAbsolutePath());
@@ -635,7 +643,14 @@ public class InternetArchiveParser {
                     String value = getRightsMetadata(meta, h);
                     if (value != null) {
                         try {
-                            Metadata accessLicense = new Metadata(prefs.getMetadataTypeByName("AccessLicense"));
+                            MetadataType type = prefs.getMetadataTypeByName("AccessLicense");
+                            Metadata accessLicense = null;
+                            List<? extends Metadata> existingLicences = issue.getAllMetadataByType(type);
+                            if (existingLicences.isEmpty()) {
+                                accessLicense = new Metadata(type);
+                            }  else {
+                                accessLicense = existingLicences.get(0);
+                            }
                             accessLicense.setValue(value);
                             issue.addMetadata(accessLicense);
                         } catch (MetadataTypeNotAllowedException e) {
@@ -782,7 +797,7 @@ public class InternetArchiveParser {
 
             if (pageList.size() != imagenameList.size()) {
                 System.err.println("Expected " + pageList.size() + " images in scandata file, but found " + imagenameList.size()
-                        + " images in folder.");
+                + " images in folder.");
                 return null;
 
             }
